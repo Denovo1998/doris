@@ -113,6 +113,14 @@ public class CreateRoutineLoadStmt extends DdlStmt {
     public static final String KAFKA_DEFAULT_OFFSETS = "kafka_default_offsets";
     public static final String KAFKA_ORIGIN_DEFAULT_OFFSETS = "kafka_origin_default_offsets";
 
+    // pulsar type properties
+    public static final String PULSAR_SERVICE_URL_PROPERTY = "pulsar_service_url";
+    public static final String PULSAR_TOPIC_PROPERTY = "pulsar_topic";
+    // optional
+    public static final String PULSAR_PARTITIONS_PROPERTY = "pulsar_partitions";
+    public static final String PULSAR_MESSAGEID_PROPERTY = "pulsar_messageid";
+    public static final String PULSAR_DEFAULT_MESSAGEID = "pulsar_default_messageid";
+
     private static final String NAME_TYPE = "ROUTINE LOAD NAME";
     public static final String ENDPOINT_REGEX = "[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]";
     public static final String SEND_BATCH_PARALLELISM = "send_batch_parallelism";
@@ -294,12 +302,32 @@ public class CreateRoutineLoadStmt extends DdlStmt {
         return this.dataSourceProperties.getCustomKafkaProperties();
     }
 
+    public String getPulsarServiceUrl() {
+        return this.dataSourceProperties.getPulsarServiceUrl();
+    }
+
+    public String getPulsarTopic() {
+        return this.dataSourceProperties.getPulsarTopic();
+    }
+
+    public List<Pair<Integer, Long>> getPulsarPartitionMessageIds() {
+        return this.dataSourceProperties.getPulsarPartitionMessageIds();
+    }
+
+    public Map<String, String> getCustomPulsarProperties() {
+        return this.dataSourceProperties.getCustomPulsarProperties();
+    }
+
     public LoadTask.MergeType getMergeType() {
         return mergeType;
     }
 
     public boolean isOffsetsForTimes() {
         return this.dataSourceProperties.isOffsetsForTimes();
+    }
+
+    public boolean isMessageIdsForTimes() {
+        return this.dataSourceProperties.isMessageIdsForTimes();
     }
 
     @Override

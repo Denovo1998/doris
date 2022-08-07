@@ -676,7 +676,7 @@ public abstract class RoutineLoadJob extends AbstractTxnStateChangeCallback impl
     }
 
     // All of private method could not be call without lock
-    private void checkStateTransform(RoutineLoadJob.JobState desireState) throws UserException {
+    private void checkStateTransform(JobState desireState) throws UserException {
         switch (state) {
             case RUNNING:
                 if (desireState == JobState.NEED_SCHEDULE) {
@@ -1505,6 +1505,8 @@ public abstract class RoutineLoadJob extends AbstractTxnStateChangeCallback impl
         LoadDataSourceType type = LoadDataSourceType.valueOf(Text.readString(in));
         if (type == LoadDataSourceType.KAFKA) {
             job = new KafkaRoutineLoadJob();
+        } else if (type == LoadDataSourceType.PULSAR) {
+            job = new PulsarRoutineLoadJob();
         } else {
             throw new IOException("Unknown load data source type: " + type.name());
         }

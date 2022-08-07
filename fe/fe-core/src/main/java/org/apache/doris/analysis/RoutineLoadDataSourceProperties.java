@@ -47,6 +47,11 @@ public class RoutineLoadDataSourceProperties {
             .add(CreateRoutineLoadStmt.KAFKA_PARTITIONS_PROPERTY)
             .add(CreateRoutineLoadStmt.KAFKA_OFFSETS_PROPERTY)
             .add(CreateRoutineLoadStmt.KAFKA_DEFAULT_OFFSETS)
+            .add(CreateRoutineLoadStmt.PULSAR_SERVICE_URL_PROPERTY)
+            .add(CreateRoutineLoadStmt.PULSAR_TOPIC_PROPERTY)
+            .add(CreateRoutineLoadStmt.PULSAR_PARTITIONS_PROPERTY)
+            .add(CreateRoutineLoadStmt.PULSAR_MESSAGEID_PROPERTY)
+            .add(CreateRoutineLoadStmt.PULSAR_DEFAULT_MESSAGEID)
             .build();
 
     private static final ImmutableSet<String> CONFIGURABLE_DATA_SOURCE_PROPERTIES_SET
@@ -56,6 +61,11 @@ public class RoutineLoadDataSourceProperties {
             .add(CreateRoutineLoadStmt.KAFKA_PARTITIONS_PROPERTY)
             .add(CreateRoutineLoadStmt.KAFKA_OFFSETS_PROPERTY)
             .add(CreateRoutineLoadStmt.KAFKA_DEFAULT_OFFSETS)
+            .add(CreateRoutineLoadStmt.PULSAR_SERVICE_URL_PROPERTY)
+            .add(CreateRoutineLoadStmt.PULSAR_TOPIC_PROPERTY)
+            .add(CreateRoutineLoadStmt.PULSAR_PARTITIONS_PROPERTY)
+            .add(CreateRoutineLoadStmt.PULSAR_MESSAGEID_PROPERTY)
+            .add(CreateRoutineLoadStmt.PULSAR_DEFAULT_MESSAGEID)
             .build();
 
     // origin properties, no need to persist
@@ -76,6 +86,17 @@ public class RoutineLoadDataSourceProperties {
     private String kafkaTopic;
     @SerializedName(value = "timezone")
     private String timezone;
+
+    @SerializedName(value = "pulsarPartitionMessageIds")
+    private List<Pair<Integer, Long>> pulsarPartitionMessageIds = Lists.newArrayList();
+    @SerializedName(value = "customPulsarProperties")
+    private Map<String, String> customPulsarProperties = Maps.newHashMap();
+    @SerializedName(value = "isMessageIdsForTimes")
+    private boolean isMessageIdsForTimes = false;
+    @SerializedName(value = "pulsarServiceUrl")
+    private String pulsarServiceUrl;
+    @SerializedName(value = "pulsarTopic")
+    private String pulsarTopic;
 
     public RoutineLoadDataSourceProperties() {
         // for unit test, and empty data source properties when altering routine load
@@ -102,7 +123,8 @@ public class RoutineLoadDataSourceProperties {
     }
 
     public boolean hasAnalyzedProperties() {
-        return !kafkaPartitionOffsets.isEmpty() || !customKafkaProperties.isEmpty();
+        return !kafkaPartitionOffsets.isEmpty() || !customKafkaProperties.isEmpty()
+                || !pulsarPartitionMessageIds.isEmpty() || !customPulsarProperties.isEmpty();
     }
 
     public String getType() {
@@ -137,6 +159,31 @@ public class RoutineLoadDataSourceProperties {
         return isOffsetsForTimes;
     }
 
+    public List<Pair<Integer, Long>> getPulsarPartitionMessageIds() {
+        return pulsarPartitionMessageIds;
+    }
+
+    public void setPulsarPartitionMessageIds(
+            List<Pair<Integer, Long>> pulsarPartitionMessageIds) {
+        this.pulsarPartitionMessageIds = pulsarPartitionMessageIds;
+    }
+
+    public Map<String, String> getCustomPulsarProperties() {
+        return customPulsarProperties;
+    }
+
+    public boolean isMessageIdsForTimes() {
+        return isMessageIdsForTimes;
+    }
+
+    public String getPulsarServiceUrl() {
+        return pulsarServiceUrl;
+    }
+
+    public String getPulsarTopic() {
+        return pulsarTopic;
+    }
+
     private void checkDataSourceProperties() throws UserException {
         LoadDataSourceType sourceType;
         try {
@@ -147,6 +194,9 @@ public class RoutineLoadDataSourceProperties {
         switch (sourceType) {
             case KAFKA:
                 checkKafkaProperties();
+                break;
+            case PULSAR:
+                checkPulsarProperties();
                 break;
             default:
                 break;
@@ -402,6 +452,10 @@ public class RoutineLoadDataSourceProperties {
             throw new AnalysisException(propertyName + " must be a integer");
         }
         return value;
+    }
+
+    private void checkPulsarProperties() throws UserException {
+
     }
 
     @Override

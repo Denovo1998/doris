@@ -589,6 +589,7 @@ enum TLoadType {
 enum TLoadSourceType {
     RAW,
     KAFKA,
+    PULSAR
 }
 
 enum TMergeType {

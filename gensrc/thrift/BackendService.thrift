@@ -50,6 +50,13 @@ struct TKafkaLoadInfo {
     4: optional map<string, string> properties;
 }
 
+struct TPulsarLoadInfo {
+    1: required string service_url;
+    2: required string topic;
+    3: required map<i32, i64> partition_begin_messageid;
+    4: optional map<string, string> properties;
+}
+
 struct TRoutineLoadTask {
     1: required Types.TLoadSourceType type
     2: required i64 job_id
@@ -63,25 +70,36 @@ struct TRoutineLoadTask {
     10: optional i64 max_batch_rows
     11: optional i64 max_batch_size
     12: optional TKafkaLoadInfo kafka_load_info
-    13: optional PaloInternalService.TExecPlanFragmentParams params
-    14: optional PlanNodes.TFileFormatType format
+    13: optional TPulsarLoadInfo pulsar_load_info
+    14: optional PaloInternalService.TExecPlanFragmentParams params
+    15: optional PlanNodes.TFileFormatType format
 }
 
 struct TKafkaMetaProxyRequest {
     1: optional TKafkaLoadInfo kafka_info
 }
 
+struct TPulsarMetaProxyRequest {
+    1: optional TPulsarLoadInfo pulsar_info
+}
+
 struct TKafkaMetaProxyResult {
+    1: optional list<i32> partition_ids
+}
+
+struct TPulsarMetaProxyResult {
     1: optional list<i32> partition_ids
 }
 
 struct TProxyRequest {
     1: optional TKafkaMetaProxyRequest kafka_meta_request;
+    2: optional TPulsarMetaProxyRequest pulsar_meta_request;
 }
 
 struct TProxyResult {
     1: required Status.TStatus status;
     2: optional TKafkaMetaProxyResult kafka_meta_result;
+    3: optional TPulsarMetaProxyResult pulsar_meta_result;
 }
 
 struct TStreamLoadRecord {
