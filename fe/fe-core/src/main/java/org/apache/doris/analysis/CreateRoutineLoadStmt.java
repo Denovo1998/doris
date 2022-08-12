@@ -116,6 +116,7 @@ public class CreateRoutineLoadStmt extends DdlStmt {
     // pulsar type properties
     public static final String PULSAR_SERVICE_URL_PROPERTY = "pulsar_service_url";
     public static final String PULSAR_TOPIC_PROPERTY = "pulsar_topic";
+    public static final String PULSAR_SUBSCRIPTION_NAME_PROPERTY = "pulsar_subscription_name";
     // optional
     public static final String PULSAR_PARTITIONS_PROPERTY = "pulsar_partitions";
     public static final String PULSAR_MESSAGEID_PROPERTY = "pulsar_messageid";
@@ -310,7 +311,11 @@ public class CreateRoutineLoadStmt extends DdlStmt {
         return this.dataSourceProperties.getPulsarTopic();
     }
 
-    public List<Pair<Integer, Long>> getPulsarPartitionMessageIds() {
+    public String getPulsarSubscriptionName() {
+        return this.dataSourceProperties.getPulsarSubscriptionName();
+    }
+
+    public List<Pair<String, String>> getPulsarPartitionMessageIds() {
         return this.dataSourceProperties.getPulsarPartitionMessageIds();
     }
 
@@ -324,10 +329,6 @@ public class CreateRoutineLoadStmt extends DdlStmt {
 
     public boolean isOffsetsForTimes() {
         return this.dataSourceProperties.isOffsetsForTimes();
-    }
-
-    public boolean isMessageIdsForTimes() {
-        return this.dataSourceProperties.isMessageIdsForTimes();
     }
 
     @Override

@@ -553,7 +553,7 @@ struct TKafkaRLTaskProgress {
 }
 
 struct TPulsarRLTaskProgress {
-    1: required map<i32,i64> partitionCmtMessageId
+    1: required map<string,string> partitionCmtMessageId
 }
 
 struct TRLTaskTxnCommitAttachment {

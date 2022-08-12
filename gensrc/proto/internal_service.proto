@@ -315,7 +315,8 @@ message PKafkaLoadInfo {
 message PPulsarLoadInfo {
     required string service_url = 1;
     required string topic = 2;
-    repeated PStringPair properties = 3;
+    required string subscription_name = 3;
+    repeated PStringPair properties = 4;
 };
 
 message PKafkaMetaProxyRequest {
@@ -328,8 +329,8 @@ message PKafkaMetaProxyRequest {
 
 message PPulsarMetaProxyRequest {
     optional PPulsarLoadInfo pulsar_info = 1;
-    repeated PIntegerPair message_id_times = 3;
-    repeated int32 partition_id_for_latest_message_ids = 4;
+    repeated PStringPair message_id_times = 3;
+    repeated string partition_name_for_latest_message_ids = 4;
 };
 
 message PProxyRequest {
@@ -342,7 +343,7 @@ message PKafkaMetaProxyResult {
 };
 
 message PPulsarMetaProxyResult {
-    repeated int32 partition_ids = 1;
+    repeated string partition_names = 1;
 };
 
 message PKafkaPartitionOffsets {
@@ -350,7 +351,7 @@ message PKafkaPartitionOffsets {
 };
 
 message PPulsarPartitionMessageIds {
-    repeated PIntegerPair message_id_times = 1;
+    repeated PStringPair message_id_times = 1;
 };
 
 message PProxyResult {

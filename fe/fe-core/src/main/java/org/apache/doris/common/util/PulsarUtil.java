@@ -43,12 +43,13 @@ public class PulsarUtil {
     private static final Logger LOG = LogManager.getLogger(PulsarUtil.class);
 
 
-    public static List<Pair<Integer, Long>> getLatestmessageId(long jobId, UUID taskId, String serviceUrl, String topic,
-                                                             Map<String, String> convertedCustomProperties,
-                                                             List<Integer> partitionIds) throws LoadException {
+    public static List<Pair<String, String>> getLatestmessageId(long jobId, UUID taskId, String serviceUrl,
+                                                                String topic, String subscriptionName,
+                                                                Map<String, String> convertedCustomProperties,
+                                                                List<String> partitionNames) throws LoadException {
         TNetworkAddress address = null;
         LOG.debug("begin to get latest messageId for partitions {} in topic: {}, task {}, job {}",
-                partitionIds, topic, taskId, jobId);
+                partitionNames, topic, taskId, jobId);
         try {
             List<Long> backendIds = Env.getCurrentSystemInfo().getBackendIds(true);
             if (backendIds.isEmpty()) {
@@ -72,8 +73,8 @@ public class PulsarUtil {
                                             ).collect(Collectors.toList())
                                     )
                             );
-            for (Integer partitionId : partitionIds) {
-                metaRequestBuilder.addPartitionIdForLatestMessageIds(partitionId);
+            for (String partitionName : partitionNames) {
+                metaRequestBuilder.addPartitionNameForLatestMessageIds(partitionName);
             }
             InternalService.PProxyRequest request = InternalService.PProxyRequest.newBuilder().setPulsarMetaRequest(
                     metaRequestBuilder).build();
@@ -83,9 +84,9 @@ public class PulsarUtil {
             if (code != TStatusCode.OK) {
                 throw new UserException("failed to get latest messageId: " + result.getStatus().getErrorMsgsList());
             } else {
-                List<InternalService.PIntegerPair> pairs = result.getPartitionMessageIds().getMessageIdTimesList();
-                List<Pair<Integer, Long>> partitionMessageIds = Lists.newArrayList();
-                for (InternalService.PIntegerPair pair : pairs) {
+                List<InternalService.PStringPair> pairs = result.getPartitionMessageIds().getMessageIdTimesList();
+                List<Pair<String, String>> partitionMessageIds = Lists.newArrayList();
+                for (InternalService.PStringPair pair : pairs) {
                     partitionMessageIds.add(Pair.create(pair.getKey(), pair.getVal()));
                 }
                 LOG.debug("finish to get latest messageId for partitions {} in topic: {}, task {}, job {}",
@@ -99,7 +100,7 @@ public class PulsarUtil {
         }
     }
 
-    public static List<Integer> getAllPulsarPartitions(String serviceUrl, String topic,
+    public static List<String> getAllPulsarPartitions(String serviceUrl, String topic, String subscriptionName,
                                                        Map<String, String> convertedCustomProperties)
             throws LoadException {
         TNetworkAddress address = null;
@@ -118,6 +119,7 @@ public class PulsarUtil {
                             .setPulsarInfo(InternalService.PPulsarLoadInfo.newBuilder()
                                     .setServiceUrl(serviceUrl)
                                     .setTopic(topic)
+                                    .setSubscriptionName(subscriptionName)
                                     .addAllProperties(convertedCustomProperties.entrySet().stream()
                                             .map(e -> InternalService.PStringPair.newBuilder().setKey(e.getKey())
                                                     .setVal(e.getValue()).build()).collect(Collectors.toList())
@@ -130,9 +132,10 @@ public class PulsarUtil {
             InternalService.PProxyResult result = future.get(5, TimeUnit.SECONDS);
             TStatusCode code = TStatusCode.findByValue(result.getStatus().getStatusCode());
             if (code != TStatusCode.OK) {
-                throw new UserException("failed to get pulsar partition info: " + result.getStatus().getErrorMsgsList());
+                throw new UserException("failed to get pulsar partition info: "
+                        + result.getStatus().getErrorMsgsList());
             } else {
-                return result.getPulsarMetaResult().getPartitionIdsList();
+                return result.getPulsarMetaResult().getPartitionNamesList();
             }
         } catch (Exception e) {
             LOG.warn("failed to get partitions.", e);

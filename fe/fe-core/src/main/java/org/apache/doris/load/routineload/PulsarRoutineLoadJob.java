@@ -65,28 +65,29 @@ public class PulsarRoutineLoadJob extends RoutineLoadJob {
     private static final Logger LOG = LogManager.getLogger(PulsarRoutineLoadJob.class);
 
     public static final String PULSAR_FILE_CATALOG = "pulsar";
-    public static final String SUBSCRIPTION_NAME = "subscription.name";
 
     private String serviceUrl;
     private String topic;
-    private List<Integer> customPulsarPartitions = Lists.newArrayList();
-    private List<Integer> currentPulsarPartitions = Lists.newArrayList();
+    private String subscriptionName;
+    private List<String> customPulsarPartitions = Lists.newArrayList();
+    private List<String> currentPulsarPartitions = Lists.newArrayList();
     private String pulsarDefaultMessageId = "";
     private Map<String, String> customProperties = Maps.newHashMap();
     private Map<String, String> convertedCustomProperties = Maps.newHashMap();
-    private Map<Integer, Long> cachedPartitionWithLatestMessageIds = Maps.newConcurrentMap();
-    private List<Integer> newCurrentPulsarPartition = Lists.newArrayList();
+    private Map<String, String> cachedPartitionWithLatestMessageIds = Maps.newConcurrentMap();
+    private List<String> newCurrentPulsarPartition = Lists.newArrayList();
 
     public PulsarRoutineLoadJob() {
         super(-1, LoadDataSourceType.PULSAR);
     }
 
     public PulsarRoutineLoadJob(Long id, String name, String clusterName,
-                               long dbId, long tableId, String serviceUrl, String topic,
+                               long dbId, long tableId, String serviceUrl, String topic, String subscriptionName,
                                UserIdentity userIdentity) {
         super(id, name, clusterName, dbId, tableId, LoadDataSourceType.PULSAR, userIdentity);
         this.serviceUrl = serviceUrl;
         this.topic = topic;
+        this.subscriptionName = subscriptionName;
         this.progress = new PulsarProgress();
     }
 
@@ -98,11 +99,15 @@ public class PulsarRoutineLoadJob extends RoutineLoadJob {
         return serviceUrl;
     }
 
+    public String getSubscriptionName() {
+        return subscriptionName;
+    }
+
     public Map<String, String> getConvertedCustomProperties() {
         return convertedCustomProperties;
     }
 
-    private long convertedDefaultMessageIdToLong() {
+    private String convertedDefaultMessageIdToString() {
         if (this.pulsarDefaultMessageId.isEmpty()) {
             return PulsarProgress.MESSAGEID_END_VAL;
         } else {
@@ -159,9 +164,9 @@ public class PulsarRoutineLoadJob extends RoutineLoadJob {
         try {
             if (state == JobState.NEED_SCHEDULE) {
                 for (int i = 0; i < currentConcurrentTaskNum; i++) {
-                    Map<Integer, Long> taskPulsarProgress = Maps.newHashMap();
+                    Map<String, String> taskPulsarProgress = Maps.newHashMap();
                     for (int j = i; j < currentPulsarPartitions.size(); j = j + currentConcurrentTaskNum) {
-                        int pulsarPartition = currentPulsarPartitions.get(j);
+                        String pulsarPartition = currentPulsarPartitions.get(j);
                         taskPulsarProgress.put(pulsarPartition,
                                 ((PulsarProgress) progress).getMessageIdByPartition(pulsarPartition));
                     }
@@ -229,7 +234,7 @@ public class PulsarRoutineLoadJob extends RoutineLoadJob {
         PulsarTaskInfo oldPulsarTaskInfo = (PulsarTaskInfo) routineLoadTaskInfo;
         // add new task
         PulsarTaskInfo pulsarTaskInfo = new PulsarTaskInfo(oldPulsarTaskInfo,
-                ((PulsarProgress) progress).getPartitionIdToMessageId(oldPulsarTaskInfo.getPartitions()));
+                ((PulsarProgress) progress).getPartitionNameToMessageId(oldPulsarTaskInfo.getPartitions()));
         // remove old task
         routineLoadTaskInfoList.remove(routineLoadTaskInfo);
         // add new task
@@ -287,7 +292,7 @@ public class PulsarRoutineLoadJob extends RoutineLoadJob {
                         }
                         return true;
                     } else {
-                        for (Integer pulsarPartition : currentPulsarPartitions) {
+                        for (String pulsarPartition : currentPulsarPartitions) {
                             if (!((PulsarProgress) progress).containsPartition(pulsarPartition)) {
                                 return true;
                             }
@@ -319,9 +324,9 @@ public class PulsarRoutineLoadJob extends RoutineLoadJob {
         return gson.toJson(summary);
     }
 
-    private List<Integer> getAllPulsarPartitions() throws UserException {
+    private List<String> getAllPulsarPartitions() throws UserException {
         convertCustomProperties(false);
-        return PulsarUtil.getAllPulsarPartitions(serviceUrl, topic, convertedCustomProperties);
+        return PulsarUtil.getAllPulsarPartitions(serviceUrl, topic, subscriptionName, convertedCustomProperties);
     }
 
     public static PulsarRoutineLoadJob fromCreateStmt(CreateRoutineLoadStmt stmt) throws UserException {
@@ -333,7 +338,8 @@ public class PulsarRoutineLoadJob extends RoutineLoadJob {
         long id = Env.getCurrentEnv().getNextId();
         PulsarRoutineLoadJob pulsarRoutineLoadJob = new PulsarRoutineLoadJob(id, stmt.getName(),
                 db.getClusterName(), db.getId(), tableId,
-                stmt.getPulsarServiceUrl(), stmt.getPulsarTopic(), stmt.getUserInfo());
+                stmt.getPulsarServiceUrl(), stmt.getPulsarTopic(),
+                stmt.getPulsarSubscriptionName(), stmt.getUserInfo());
         pulsarRoutineLoadJob.setOptional(stmt);
         pulsarRoutineLoadJob.checkCustomProperties();
         pulsarRoutineLoadJob.checkCustomPartition();
@@ -345,8 +351,12 @@ public class PulsarRoutineLoadJob extends RoutineLoadJob {
         if (customPulsarPartitions.isEmpty()) {
             return;
         }
-        List<Integer> allPulsarPartitions = getAllPulsarPartitions();
-        for (Integer customPartition : customPulsarPartitions) {
+        List<String> allPulsarPartitions = getAllPulsarPartitions();
+        for (String allPulsarPartition : allPulsarPartitions) {
+            LOG.info(allPulsarPartition);
+        }
+        for (String customPartition : customPulsarPartitions) {
+            LOG.info(customPartition);
             if (!allPulsarPartitions.contains(customPartition)) {
                 throw new LoadException("there is a custom pulsar partition " + customPartition
                         + " which is invalid for topic " + topic);
@@ -369,14 +379,14 @@ public class PulsarRoutineLoadJob extends RoutineLoadJob {
 
     private void updateNewPartitionProgress() throws UserException {
         try {
-            for (Integer pulsarPartition : currentPulsarPartitions) {
+            for (String pulsarPartition : currentPulsarPartitions) {
                 if (!((PulsarProgress) progress).containsPartition(pulsarPartition)) {
-                    List<Integer> newPartitions = Lists.newArrayList();
+                    List<String> newPartitions = Lists.newArrayList();
                     newPartitions.add(pulsarPartition);
-                    List<Pair<Integer, Long>> newPartitionsMessageIds
+                    List<Pair<String, String>> newPartitionsMessageIds
                             = getNewPartitionMessageIdsFromDefaultMessageId(newPartitions);
                     Preconditions.checkState(newPartitionsMessageIds.size() == 1);
-                    for (Pair<Integer, Long> partitionMessageId : newPartitionsMessageIds) {
+                    for (Pair<String, String> partitionMessageId : newPartitionsMessageIds) {
                         ((PulsarProgress) progress).addPartitionMessageId(partitionMessageId);
                         if (LOG.isDebugEnabled()) {
                             LOG.debug(new LogBuilder(LogKey.ROUTINE_LOAD_JOB, id)
@@ -394,11 +404,11 @@ public class PulsarRoutineLoadJob extends RoutineLoadJob {
         }
     }
 
-    private List<Pair<Integer, Long>> getNewPartitionMessageIdsFromDefaultMessageId(List<Integer> newPartitions)
+    private List<Pair<String, String>> getNewPartitionMessageIdsFromDefaultMessageId(List<String> newPartitions)
             throws UserException {
-        List<Pair<Integer, Long>> partitionMessageIds = Lists.newArrayList();
-        long beginMessageId = convertedDefaultMessageIdToLong();
-        for (Integer pulsarPartition : newPartitions) {
+        List<Pair<String, String>> partitionMessageIds = Lists.newArrayList();
+        String beginMessageId = convertedDefaultMessageIdToString();
+        for (String pulsarPartition : newPartitions) {
             partitionMessageIds.add(Pair.create(pulsarPartition, beginMessageId));
         }
         return partitionMessageIds;
@@ -414,14 +424,11 @@ public class PulsarRoutineLoadJob extends RoutineLoadJob {
         if (!stmt.getCustomPulsarProperties().isEmpty()) {
             setCustomPulsarProperties(stmt.getCustomPulsarProperties());
         }
-        if (!this.customProperties.containsKey(SUBSCRIPTION_NAME)) {
-            this.customProperties.put(SUBSCRIPTION_NAME, name + "_" + UUID.randomUUID().toString());
-        }
     }
 
     private void setCustomPulsarPartitions(CreateRoutineLoadStmt stmt) throws LoadException {
-        List<Pair<Integer, Long>> pulsarPartitionMessageIds = stmt.getPulsarPartitionMessageIds();
-        for (Pair<Integer, Long> partitionMessageId : pulsarPartitionMessageIds) {
+        List<Pair<String, String>> pulsarPartitionMessageIds = stmt.getPulsarPartitionMessageIds();
+        for (Pair<String, String> partitionMessageId : pulsarPartitionMessageIds) {
             this.customPulsarPartitions.add(partitionMessageId.first);
             ((PulsarProgress) progress).addPartitionMessageId(partitionMessageId);
         }
@@ -436,7 +443,8 @@ public class PulsarRoutineLoadJob extends RoutineLoadJob {
         Map<String, String> dataSourceProperties = Maps.newHashMap();
         dataSourceProperties.put("serviceUrl", serviceUrl);
         dataSourceProperties.put("topic", topic);
-        List<Integer> sortedPartitions = Lists.newArrayList(currentPulsarPartitions);
+        dataSourceProperties.put("subscriptionName", subscriptionName);
+        List<String> sortedPartitions = Lists.newArrayList(currentPulsarPartitions);
         Collections.sort(sortedPartitions);
         dataSourceProperties.put("currentPulsarPartitions", Joiner.on(",").join(sortedPartitions));
         Gson gson = new GsonBuilder().disableHtmlEscaping().create();
@@ -454,6 +462,7 @@ public class PulsarRoutineLoadJob extends RoutineLoadJob {
         Map<String, String> dataSourceProperties = Maps.newHashMap();
         dataSourceProperties.put("pulsar_service_url", serviceUrl);
         dataSourceProperties.put("pulsar_topic", topic);
+        dataSourceProperties.put("pulsar_subscription_name", subscriptionName);
         return dataSourceProperties;
     }
 
@@ -469,10 +478,11 @@ public class PulsarRoutineLoadJob extends RoutineLoadJob {
         super.write(out);
         Text.writeString(out, serviceUrl);
         Text.writeString(out, topic);
+        Text.writeString(out, subscriptionName);
 
         out.writeInt(customPulsarPartitions.size());
-        for (Integer partitionId : customPulsarPartitions) {
-            out.writeInt(partitionId);
+        for (String partitionName : customPulsarPartitions) {
+            Text.writeString(out, partitionName);
         }
 
         out.writeInt(customProperties.size());
@@ -486,9 +496,10 @@ public class PulsarRoutineLoadJob extends RoutineLoadJob {
         super.readFields(in);
         serviceUrl = Text.readString(in);
         topic = Text.readString(in);
+        subscriptionName = Text.readString(in);
         int size = in.readInt();
         for (int i = 0; i < size; i++) {
-            customPulsarPartitions.add(in.readInt());
+            customPulsarPartitions.add(Text.readString(in));
         }
 
         int count = in.readInt();
@@ -524,7 +535,7 @@ public class PulsarRoutineLoadJob extends RoutineLoadJob {
     private void modifyPropertiesInternal(Map<String, String> jobProperties,
                                           RoutineLoadDataSourceProperties dataSourceProperties)
             throws DdlException {
-        List<Pair<Integer, Long>> pulsarPartitionMessageIds = Lists.newArrayList();
+        List<Pair<String, String>> pulsarPartitionMessageIds = Lists.newArrayList();
         Map<String, String> customPulsarProperties = Maps.newHashMap();
 
         if (dataSourceProperties.hasAnalyzedProperties()) {
@@ -553,6 +564,9 @@ public class PulsarRoutineLoadJob extends RoutineLoadJob {
         if (!Strings.isNullOrEmpty(dataSourceProperties.getPulsarTopic())) {
             this.topic = dataSourceProperties.getPulsarTopic();
         }
+        if (!Strings.isNullOrEmpty(dataSourceProperties.getPulsarSubscriptionName())) {
+            this.subscriptionName = dataSourceProperties.getPulsarSubscriptionName();
+        }
 
         LOG.info("modify the properties of pulsar routine load job: {}, jobProperties: {}, datasource properties: {}",
                 this.id, jobProperties, dataSourceProperties);
@@ -567,21 +581,22 @@ public class PulsarRoutineLoadJob extends RoutineLoadJob {
         }
     }
 
-    public boolean hasMoreDataToConsume(UUID taskId, Map<Integer, Long> partitionIdToMessageId) {
-        for (Map.Entry<Integer, Long> entry : partitionIdToMessageId.entrySet()) {
+    public boolean hasMoreDataToConsume(UUID taskId, Map<String, String> partitionNameToMessageId) {
+        for (Map.Entry<String, String> entry : partitionNameToMessageId.entrySet()) {
             if (cachedPartitionWithLatestMessageIds.containsKey(entry.getKey())
-                    && entry.getValue() < cachedPartitionWithLatestMessageIds.get(entry.getKey())) {
+                    /*&& entry.getValue() < cachedPartitionWithLatestMessageIds.get(entry.getKey())*/) {
                 LOG.debug("has more data to consume. messageId to be consumed: {}"
                                 + ", latest messageId: {}, task {}, job {}",
-                        partitionIdToMessageId, cachedPartitionWithLatestMessageIds, taskId, id);
+                        partitionNameToMessageId, cachedPartitionWithLatestMessageIds, taskId, id);
                 return true;
             }
         }
 
         try {
-            List<Pair<Integer, Long>> tmp = PulsarUtil.getLatestmessageId(id, taskId, getServiceUrl(),
-                    getTopic(), getConvertedCustomProperties(), Lists.newArrayList(partitionIdToMessageId.keySet()));
-            for (Pair<Integer, Long> pair : tmp) {
+            List<Pair<String, String>> tmp = PulsarUtil.getLatestmessageId(id, taskId, getServiceUrl(), getTopic(),
+                    getSubscriptionName(), getConvertedCustomProperties(),
+                    Lists.newArrayList(partitionNameToMessageId.keySet()));
+            for (Pair<String, String> pair : tmp) {
                 cachedPartitionWithLatestMessageIds.put(pair.first, pair.second);
             }
         } catch (Exception e) {
@@ -589,27 +604,27 @@ public class PulsarRoutineLoadJob extends RoutineLoadJob {
             return false;
         }
 
-        for (Map.Entry<Integer, Long> entry : partitionIdToMessageId.entrySet()) {
+        for (Map.Entry<String, String> entry : partitionNameToMessageId.entrySet()) {
             if (cachedPartitionWithLatestMessageIds.containsKey(entry.getKey())
-                    && entry.getValue() < cachedPartitionWithLatestMessageIds.get(entry.getKey())) {
+                    /*&& entry.getValue() < cachedPartitionWithLatestMessageIds.get(entry.getKey())*/) {
                 LOG.debug("has more data to consume. messageId to be consumed: {}"
                                 + ", latest messageId: {}, task {}, job {}",
-                        partitionIdToMessageId, cachedPartitionWithLatestMessageIds, taskId, id);
+                        partitionNameToMessageId, cachedPartitionWithLatestMessageIds, taskId, id);
                 return true;
             }
         }
 
         LOG.debug("no more data to consume. messageId to be consumed: {}, latest messageId: {}, task {}, job {}",
-                partitionIdToMessageId, cachedPartitionWithLatestMessageIds, taskId, id);
+                partitionNameToMessageId, cachedPartitionWithLatestMessageIds, taskId, id);
         return false;
     }
 
     @Override
     protected String getLag() {
-        Map<Integer, Long> partitionIdToMessageIdLag = ((PulsarProgress) progress)
+        Map<String, String> partitionNameToMessageIdLag = ((PulsarProgress) progress)
                 .getLag(cachedPartitionWithLatestMessageIds);
         Gson gson = new Gson();
-        return gson.toJson(partitionIdToMessageIdLag);
+        return gson.toJson(partitionNameToMessageIdLag);
     }
 
     @Override

@@ -1412,6 +1412,13 @@ public abstract class RoutineLoadJob extends AbstractTxnStateChangeCallback impl
             appendProperties(sb, CreateRoutineLoadStmt.KAFKA_OFFSETS_PROPERTY,
                     Joiner.on(", ").join(pairs.stream().map(p -> p.second).toArray()), false);
         }
+        if (progress instanceof PulsarProgress) {
+            List<Pair<String, String>> pairs = ((PulsarProgress) progress).getPartitionMessageIdPairs(false);
+            appendProperties(sb, CreateRoutineLoadStmt.PULSAR_PARTITIONS_PROPERTY,
+                    Joiner.on(", ").join(pairs.stream().map(p -> p.first).toArray()), false);
+            appendProperties(sb, CreateRoutineLoadStmt.PULSAR_MESSAGEID_PROPERTY,
+                    Joiner.on(", ").join(pairs.stream().map(p -> p.second).toArray()), false);
+        }
         // remove the last ","
         sb.replace(sb.length() - 2, sb.length() - 1, "");
         sb.append(");");
@@ -1582,6 +1589,11 @@ public abstract class RoutineLoadJob extends AbstractTxnStateChangeCallback impl
         switch (dataSourceType) {
             case KAFKA: {
                 progress = new KafkaProgress();
+                progress.readFields(in);
+                break;
+            }
+            case PULSAR: {
+                progress = new PulsarProgress();
                 progress.readFields(in);
                 break;
             }

@@ -49,6 +49,7 @@ public class RoutineLoadDataSourceProperties {
             .add(CreateRoutineLoadStmt.KAFKA_DEFAULT_OFFSETS)
             .add(CreateRoutineLoadStmt.PULSAR_SERVICE_URL_PROPERTY)
             .add(CreateRoutineLoadStmt.PULSAR_TOPIC_PROPERTY)
+            .add(CreateRoutineLoadStmt.PULSAR_SUBSCRIPTION_NAME_PROPERTY)
             .add(CreateRoutineLoadStmt.PULSAR_PARTITIONS_PROPERTY)
             .add(CreateRoutineLoadStmt.PULSAR_MESSAGEID_PROPERTY)
             .add(CreateRoutineLoadStmt.PULSAR_DEFAULT_MESSAGEID)
@@ -63,6 +64,7 @@ public class RoutineLoadDataSourceProperties {
             .add(CreateRoutineLoadStmt.KAFKA_DEFAULT_OFFSETS)
             .add(CreateRoutineLoadStmt.PULSAR_SERVICE_URL_PROPERTY)
             .add(CreateRoutineLoadStmt.PULSAR_TOPIC_PROPERTY)
+            .add(CreateRoutineLoadStmt.PULSAR_SUBSCRIPTION_NAME_PROPERTY)
             .add(CreateRoutineLoadStmt.PULSAR_PARTITIONS_PROPERTY)
             .add(CreateRoutineLoadStmt.PULSAR_MESSAGEID_PROPERTY)
             .add(CreateRoutineLoadStmt.PULSAR_DEFAULT_MESSAGEID)
@@ -88,15 +90,15 @@ public class RoutineLoadDataSourceProperties {
     private String timezone;
 
     @SerializedName(value = "pulsarPartitionMessageIds")
-    private List<Pair<Integer, Long>> pulsarPartitionMessageIds = Lists.newArrayList();
+    private List<Pair<String, String>> pulsarPartitionMessageIds = Lists.newArrayList();
     @SerializedName(value = "customPulsarProperties")
     private Map<String, String> customPulsarProperties = Maps.newHashMap();
-    @SerializedName(value = "isMessageIdsForTimes")
-    private boolean isMessageIdsForTimes = false;
     @SerializedName(value = "pulsarServiceUrl")
     private String pulsarServiceUrl;
     @SerializedName(value = "pulsarTopic")
     private String pulsarTopic;
+    @SerializedName(value = "pulsarSubscriptionName")
+    private String pulsarSubscriptionName;
 
     public RoutineLoadDataSourceProperties() {
         // for unit test, and empty data source properties when altering routine load
@@ -159,21 +161,17 @@ public class RoutineLoadDataSourceProperties {
         return isOffsetsForTimes;
     }
 
-    public List<Pair<Integer, Long>> getPulsarPartitionMessageIds() {
+    public List<Pair<String, String>> getPulsarPartitionMessageIds() {
         return pulsarPartitionMessageIds;
     }
 
     public void setPulsarPartitionMessageIds(
-            List<Pair<Integer, Long>> pulsarPartitionMessageIds) {
+            List<Pair<String, String>> pulsarPartitionMessageIds) {
         this.pulsarPartitionMessageIds = pulsarPartitionMessageIds;
     }
 
     public Map<String, String> getCustomPulsarProperties() {
         return customPulsarProperties;
-    }
-
-    public boolean isMessageIdsForTimes() {
-        return isMessageIdsForTimes;
     }
 
     public String getPulsarServiceUrl() {
@@ -182,6 +180,10 @@ public class RoutineLoadDataSourceProperties {
 
     public String getPulsarTopic() {
         return pulsarTopic;
+    }
+
+    public String getPulsarSubscriptionName() {
+        return pulsarSubscriptionName;
     }
 
     private void checkDataSourceProperties() throws UserException {
@@ -455,7 +457,7 @@ public class RoutineLoadDataSourceProperties {
     }
 
     private void checkPulsarProperties() throws UserException {
-
+        // TODO:添加检查pulsar配置
     }
 
     @Override

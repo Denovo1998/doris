@@ -53,8 +53,9 @@ struct TKafkaLoadInfo {
 struct TPulsarLoadInfo {
     1: required string service_url;
     2: required string topic;
-    3: required map<i32, i64> partition_begin_messageid;
-    4: optional map<string, string> properties;
+    3: required string subscription_name;
+    4: required map<string, string> partition_begin_messageid;
+    5: optional map<string, string> properties;
 }
 
 struct TRoutineLoadTask {
@@ -88,7 +89,7 @@ struct TKafkaMetaProxyResult {
 }
 
 struct TPulsarMetaProxyResult {
-    1: optional list<i32> partition_ids
+    1: optional list<string> partition_names
 }
 
 struct TProxyRequest {

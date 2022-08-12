@@ -44,22 +44,22 @@ public class PulsarTaskInfo extends RoutineLoadTaskInfo {
     private static final Logger LOG = LogManager.getLogger(PulsarTaskInfo.class);
 
     private RoutineLoadManager routineLoadManager = Env.getCurrentEnv().getRoutineLoadManager();
-    private Map<Integer, Long> partitionIdToMessageId;
+    private Map<String, String> partitionNameToMessageId;
 
     public PulsarTaskInfo(UUID id, long jobId, String clusterName,
-                          long timeoutMs, Map<Integer, Long> partitionIdToMessageId) {
+                          long timeoutMs, Map<String, String> partitionNameToMessageId) {
         super(id, jobId, clusterName, timeoutMs);
-        this.partitionIdToMessageId = partitionIdToMessageId;
+        this.partitionNameToMessageId = partitionNameToMessageId;
     }
 
-    public PulsarTaskInfo(PulsarTaskInfo pulsarTaskInfo, Map<Integer, Long> partitionIdToMessageId) {
+    public PulsarTaskInfo(PulsarTaskInfo pulsarTaskInfo, Map<String, String> partitionNameToMessageId) {
         super(UUID.randomUUID(), pulsarTaskInfo.getJobId(), pulsarTaskInfo.getClusterName(),
                 pulsarTaskInfo.getTimeoutMs(), pulsarTaskInfo.getBeId());
-        this.partitionIdToMessageId = partitionIdToMessageId;
+        this.partitionNameToMessageId = partitionNameToMessageId;
     }
 
-    public List<Integer> getPartitions() {
-        return new ArrayList<>(partitionIdToMessageId.keySet());
+    public List<String> getPartitions() {
+        return new ArrayList<>(partitionNameToMessageId.keySet());
     }
 
     @Override
@@ -84,7 +84,7 @@ public class PulsarTaskInfo extends RoutineLoadTaskInfo {
         TPulsarLoadInfo tPulsarLoadInfo = new TPulsarLoadInfo();
         tPulsarLoadInfo.setTopic(routineLoadJob.getTopic());
         tPulsarLoadInfo.setServiceUrl(routineLoadJob.getServiceUrl());
-        tPulsarLoadInfo.setPartitionBeginMessageid(partitionIdToMessageId);
+        tPulsarLoadInfo.setPartitionBeginMessageid(partitionNameToMessageId);
         tPulsarLoadInfo.setProperties(routineLoadJob.getConvertedCustomProperties());
         tRoutineLoadTask.setPulsarLoadInfo(tPulsarLoadInfo);
         tRoutineLoadTask.setType(TLoadSourceType.PULSAR);
@@ -103,13 +103,13 @@ public class PulsarTaskInfo extends RoutineLoadTaskInfo {
     @Override
     String getTaskDataSourceProperties() {
         Gson gson = new Gson();
-        return gson.toJson(partitionIdToMessageId);
+        return gson.toJson(partitionNameToMessageId);
     }
 
     @Override
     boolean hasMoreDataToConsume() {
         PulsarRoutineLoadJob routineLoadJob = (PulsarRoutineLoadJob) routineLoadManager.getJob(jobId);
-        return routineLoadJob.hasMoreDataToConsume(id, partitionIdToMessageId);
+        return routineLoadJob.hasMoreDataToConsume(id, partitionNameToMessageId);
     }
 
     private TExecPlanFragmentParams rePlan(RoutineLoadJob routineLoadJob) throws UserException {
